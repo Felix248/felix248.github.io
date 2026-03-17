@@ -120,35 +120,83 @@
     .step-btn:hover { background: #f0f0f0; }
     .step-btn:active { transform: scale(0.96); }
 
+    .page {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .vol-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vol-label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    #vol-slider {
+      writing-mode: vertical-lr;
+      direction: rtl;
+      width: 6px;
+      height: 160px;
+      accent-color: #111;
+      cursor: pointer;
+      flex: none;
+    }
+
     @media (prefers-color-scheme: dark) {
       body { background: #1a1a1a; color: #f0f0f0; }
       #disp span { color: #999; }
       #flash { background: #f0f0f0; }
       input[type=number] { background: #2a2a2a; color: #f0f0f0; border-color: #444; }
       input[type=range] { accent-color: #f0f0f0; }
+      #vol-slider { accent-color: #f0f0f0; }
       button { background: #f0f0f0; color: #111; }
       .step-btn { background: #2a2a2a; color: #f0f0f0; border-color: #444; }
       .step-btn:hover { background: #3a3a3a; }
+      .vol-label { color: #999; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div id="disp">120 <span>BPM</span></div>
-    <div id="flash"></div>
-    <div class="controls">
-      <input type="range" id="sl" min="5" max="400" value="120" step="5">
-      <input type="number" id="num" value="120" min="1">
-      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-        <button class="step-btn" onclick="sync(bpm + 1)">+</button>
-        <button class="step-btn" onclick="sync(bpm - 1)">−</button>
+  <div class="page">
+    <div class="wrap">
+      <div id="disp">120 <span>BPM</span></div>
+      <div id="flash"></div>
+      <div class="controls">
+        <input type="range" id="sl" min="5" max="400" value="120" step="5">
+        <input type="number" id="num" value="120" min="1">
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+          <button class="step-btn" onclick="sync(bpm + 1)">+</button>
+          <button class="step-btn" onclick="sync(bpm - 1)">−</button>
+        </div>
       </div>
+      <button id="btn" onclick="toggle()">Start</button>
     </div>
-    <button id="btn" onclick="toggle()">Start</button>
+    <div class="vol-col">
+      <span class="vol-label">100%</span>
+      <input type="range" id="vol-slider" min="0" max="100" value="100" step="5">
+      <span class="vol-label">Lautstärke</span>
+    </div>
   </div>
 
   <script>
     let bpm = parseInt(localStorage.getItem('metronom_bpm')) || 120, running = false, tid = null, ctx = null;
+    let volume = parseInt(localStorage.getItem('metronom_vol') ?? '100') / 100;
+
+    const volSlider = document.getElementById('vol-slider');
+    const volLabel = volSlider.previousElementSibling;
+    volSlider.value = Math.round(volume * 100);
+    volLabel.textContent = Math.round(volume * 100) + '%';
+    volSlider.addEventListener('input', e => {
+      volume = e.target.value / 100;
+      volLabel.textContent = e.target.value + '%';
+      localStorage.setItem('metronom_vol', e.target.value);
+    });
 
     function sync(v) {
       bpm = Math.max(1, Math.round(v));
@@ -168,7 +216,7 @@
         const o = ctx.createOscillator(), g = ctx.createGain();
         o.connect(g); g.connect(ctx.destination);
         o.frequency.value = 1000;
-        g.gain.setValueAtTime(0.3, ctx.currentTime);
+        g.gain.setValueAtTime(0.3 * volume, ctx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
         o.start(); o.stop(ctx.currentTime + 0.07);
       } catch(e) {}
