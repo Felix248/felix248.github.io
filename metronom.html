@@ -110,7 +110,7 @@
     <div id="disp">120 <span>BPM</span></div>
     <div id="flash"></div>
     <div class="controls">
-      <input type="range" id="sl" min="1" max="300" value="120" step="1">
+      <input type="range" id="sl" min="1" max="400" value="120" step="1">
       <input type="number" id="num" value="120" min="1">
     </div>
     <button id="btn" onclick="toggle()">Start</button>
@@ -122,7 +122,7 @@
     function sync(v) {
       bpm = Math.max(1, Math.round(v));
       document.getElementById('disp').innerHTML = bpm + ' <span>BPM</span>';
-      document.getElementById('sl').value = Math.min(bpm, 300);
+      document.getElementById('sl').value = Math.min(bpm, 400);
       document.getElementById('num').value = bpm;
       if (running) { clearInterval(tid); tid = setInterval(tick, 60000 / bpm); }
     }
