@@ -24,7 +24,7 @@
       gap: 1.5rem;
       padding: 2rem;
       width: 100%;
-      max-width: 500px;
+      max-width: 620px;
     }
 
     #disp {
@@ -120,10 +120,38 @@
     .step-btn:hover { background: #f0f0f0; }
     .step-btn:active { transform: scale(0.96); }
 
+    .mode-toggle {
+      display: flex;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .mode-toggle button {
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: 0;
+      background: #fff;
+      color: #888;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+      opacity: 1;
+    }
+
+    .mode-toggle button.active {
+      background: #111;
+      color: #fff;
+    }
+
+    .mode-toggle button:hover:not(.active) { background: #f0f0f0; }
+
     .page {
       display: flex;
       align-items: center;
-      gap: 2rem;
+      gap: 0.25rem;
     }
 
     .vol-col {
@@ -158,7 +186,8 @@
       button { background: #f0f0f0; color: #111; }
       .step-btn { background: #2a2a2a; color: #f0f0f0; border-color: #444; }
       .step-btn:hover { background: #3a3a3a; }
-      .vol-label { color: #999; }
+      .mode-toggle button { background: #2a2a2a; color: #888; border-color: #444; }
+      .mode-toggle button.active { background: #f0f0f0; color: #111; }
     }
   </style>
 </head>
@@ -166,13 +195,20 @@
   <div class="page">
     <div class="wrap">
       <div id="disp">120 <span>BPM</span></div>
-      <div id="flash"></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div id="flash"></div>
+        <div id="disp-bps" style="font-size:1rem;font-weight:400;color:#aaa">2.00 BPS</div>
+      </div>
       <div class="controls">
-        <input type="range" id="sl" min="5" max="400" value="120" step="5">
+        <div class="mode-toggle">
+          <button id="mode-bpm" class="active" onclick="setMode('bpm')">BPM</button>
+          <button id="mode-bps" onclick="setMode('bps')">BPS</button>
+        </div>
+        <input type="range" id="sl" min="60" max="400" value="120" step="5">
         <input type="number" id="num" value="120" min="1">
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-          <button class="step-btn" onclick="sync(bpm + 1)">+</button>
-          <button class="step-btn" onclick="sync(bpm - 1)">−</button>
+          <button class="step-btn" onclick="stepVal(1)">+</button>
+          <button class="step-btn" onclick="stepVal(-1)">−</button>
         </div>
       </div>
       <button id="btn" onclick="toggle()">Start</button>
@@ -187,6 +223,7 @@
   <script>
     let bpm = parseInt(localStorage.getItem('metronom_bpm')) || 120, running = false, tid = null, ctx = null;
     let volume = parseInt(localStorage.getItem('metronom_vol') ?? '100') / 100;
+    let mode = localStorage.getItem('metronom_mode') || 'bpm';
 
     const volSlider = document.getElementById('vol-slider');
     const volLabel = volSlider.previousElementSibling;
@@ -198,17 +235,68 @@
       localStorage.setItem('metronom_vol', e.target.value);
     });
 
+    function setMode(m) {
+      mode = m;
+      localStorage.setItem('metronom_mode', m);
+      document.getElementById('mode-bpm').classList.toggle('active', m === 'bpm');
+      document.getElementById('mode-bps').classList.toggle('active', m === 'bps');
+      const sl = document.getElementById('sl');
+      const num = document.getElementById('num');
+      if (m === 'bpm') {
+        sl.min = 60; sl.max = 400; sl.step = 5;
+        sl.value = bpm;
+        num.value = bpm;
+        num.step = 1;
+      } else {
+        sl.min = 1; sl.max = 10; sl.step = 0.2;
+        sl.value = parseFloat((bpm / 60).toFixed(2));
+        num.value = (bpm / 60).toFixed(2);
+        num.step = 0.1;
+      }
+    }
+
+    function stepVal(d) {
+      if (mode === 'bpm') {
+        sync(bpm + d);
+      } else {
+        const cur = parseFloat(document.getElementById('num').value) || bpm / 60;
+        syncFromBps(Math.round((cur + d * 0.1) * 100) / 100);
+      }
+    }
+
+    function syncFromBps(bps) {
+      bps = Math.max(0.1, Math.min(10, bps));
+      bpm = Math.max(1, Math.round(bps * 60));
+      updateDisplay();
+      document.getElementById('sl').value = bps;
+      document.getElementById('num').value = bps.toFixed(2);
+      localStorage.setItem('metronom_bpm', bpm);
+      if (running) { clearInterval(tid); tid = setInterval(tick, 60000 / bpm); }
+    }
+
     function sync(v) {
       bpm = Math.max(1, Math.round(v));
-      document.getElementById('disp').innerHTML = bpm + ' <span>BPM</span>';
+      updateDisplay();
       document.getElementById('sl').value = Math.min(bpm, 400);
       document.getElementById('num').value = bpm;
       localStorage.setItem('metronom_bpm', bpm);
       if (running) { clearInterval(tid); tid = setInterval(tick, 60000 / bpm); }
     }
 
-    document.getElementById('sl').addEventListener('input', e => sync(e.target.value));
-    document.getElementById('num').addEventListener('input', e => { if (e.target.value > 0) sync(e.target.value); });
+    function updateDisplay() {
+      document.getElementById('disp').innerHTML = bpm + ' <span>BPM</span>';
+      document.getElementById('disp-bps').textContent = (bpm / 60).toFixed(2) + ' BPS';
+    }
+
+    document.getElementById('sl').addEventListener('input', e => {
+      if (mode === 'bpm') sync(e.target.value);
+      else syncFromBps(parseFloat(e.target.value));
+    });
+    document.getElementById('num').addEventListener('input', e => {
+      if (!e.target.value) return;
+      if (mode === 'bpm') { if (e.target.value > 0) sync(e.target.value); }
+      else syncFromBps(parseFloat(e.target.value));
+    });
 
     function click() {
       try {
@@ -229,6 +317,7 @@
       setTimeout(() => f.style.opacity = '0.12', 80);
     }
 
+    setMode(mode);
     sync(bpm);
 
     function toggle() {
