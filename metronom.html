@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metronom</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #ffffff;
+      color: #111111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #disp {
+      font-size: 4rem;
+      font-weight: 500;
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+
+    #disp span {
+      font-size: 1.2rem;
+      font-weight: 400;
+      color: #666;
+    }
+
+    #flash {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #111;
+      opacity: 0.12;
+      transition: opacity 0.05s;
+    }
+
+    .controls {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type=range] {
+      flex: 1;
+      height: 4px;
+      accent-color: #111;
+      cursor: pointer;
+    }
+
+    input[type=number] {
+      width: 68px;
+      padding: 6px 8px;
+      font-size: 15px;
+      font-weight: 500;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      color: #111;
+      outline: none;
+    }
+
+    input[type=number]:focus {
+      border-color: #888;
+    }
+
+    button {
+      padding: 10px 48px;
+      font-size: 15px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      background: #111;
+      color: #fff;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.8; }
+    button:active { transform: scale(0.98); }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a1a; color: #f0f0f0; }
+      #disp span { color: #999; }
+      #flash { background: #f0f0f0; }
+      input[type=number] { background: #2a2a2a; color: #f0f0f0; border-color: #444; }
+      input[type=range] { accent-color: #f0f0f0; }
+      button { background: #f0f0f0; color: #111; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="disp">120 <span>BPM</span></div>
+    <div id="flash"></div>
+    <div class="controls">
+      <input type="range" id="sl" min="1" max="300" value="120" step="1">
+      <input type="number" id="num" value="120" min="1">
+    </div>
+    <button id="btn" onclick="toggle()">Start</button>
+  </div>
+
+  <script>
+    let bpm = 120, running = false, tid = null, ctx = null;
+
+    function sync(v) {
+      bpm = Math.max(1, Math.round(v));
+      document.getElementById('disp').innerHTML = bpm + ' <span>BPM</span>';
+      document.getElementById('sl').value = Math.min(bpm, 300);
+      document.getElementById('num').value = bpm;
+      if (running) { clearInterval(tid); tid = setInterval(tick, 60000 / bpm); }
+    }
+
+    document.getElementById('sl').addEventListener('input', e => sync(e.target.value));
+    document.getElementById('num').addEventListener('input', e => { if (e.target.value > 0) sync(e.target.value); });
+
+    function click() {
+      try {
+        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = 1000;
+        g.gain.setValueAtTime(0.3, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+        o.start(); o.stop(ctx.currentTime + 0.07);
+      } catch(e) {}
+    }
+
+    function tick() {
+      click();
+      const f = document.getElementById('flash');
+      f.style.opacity = '1';
+      setTimeout(() => f.style.opacity = '0.12', 80);
+    }
+
+    function toggle() {
+      if (running) {
+        clearInterval(tid); tid = null; running = false;
+        document.getElementById('btn').textContent = 'Start';
+      } else {
+        tick();
+        tid = setInterval(tick, 60000 / bpm);
+        running = true;
+        document.getElementById('btn').textContent = 'Stop';
+      }
+    }
+  </script>
+</body>
+</html>
