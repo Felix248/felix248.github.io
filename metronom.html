@@ -265,7 +265,7 @@
     }
 
     function syncFromBps(bps) {
-      bps = Math.max(0.1, Math.min(10, bps));
+      bps = Math.max(0.1, bps);
       bpm = Math.max(1, Math.round(bps * 60));
       updateDisplay();
       document.getElementById('sl').value = bps;
@@ -293,9 +293,10 @@
       else syncFromBps(parseFloat(e.target.value));
     });
     document.getElementById('num').addEventListener('input', e => {
-      if (!e.target.value) return;
-      if (mode === 'bpm') { if (e.target.value > 0) sync(e.target.value); }
-      else syncFromBps(parseFloat(e.target.value));
+      if (mode === 'bpm' && e.target.value > 0) sync(e.target.value);
+    });
+    document.getElementById('num').addEventListener('change', e => {
+      if (mode === 'bps' && e.target.value > 0) syncFromBps(parseFloat(e.target.value));
     });
 
     function click() {
