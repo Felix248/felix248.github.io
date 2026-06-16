@@ -342,6 +342,37 @@
             transition: transform 0.2s ease;
         }
 
+        /* Floating Cancel Button (Bottom Right) */
+        .cancel-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            padding: 12px 24px;
+            background: rgba(15, 15, 18, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 15;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            color: #ffffff;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .cancel-btn:hover {
+            transform: scale(1.05);
+            background: rgba(225, 29, 72, 0.2);
+            border-color: var(--brand-primary);
+            color: var(--brand-primary-hover);
+        }
+
         /* Premium Centered Intermission Overlay Card */
         #break-overlay {
             position: absolute;
@@ -532,6 +563,12 @@
                 top: 20px;
                 right: 20px;
             }
+            .cancel-btn {
+                bottom: 20px;
+                right: 20px;
+                padding: 10px 18px;
+                font-size: 0.75rem;
+            }
         }
     </style>
 </head>
@@ -545,6 +582,11 @@
             <svg id="fullscreen-icon" viewBox="0 0 24 24">
                 <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
             </svg>
+        </button>
+
+        <!-- Floating Cancel Button -->
+        <button id="cancel-routine" class="cancel-btn" onclick="cancelRoutine()" title="Cancel Training Session">
+            Cancel Training
         </button>
 
         <!-- Control Setup & Config Dashboard -->
@@ -672,6 +714,7 @@
         const hud = document.getElementById('instruction-hud');
         const hudText = document.getElementById('instruction-text');
         const menu = document.getElementById('setup-menu');
+        const cancelBtn = document.getElementById('cancel-routine');
 
         // Break Overlay Elements
         const breakOverlay = document.getElementById('break-overlay');
@@ -736,11 +779,35 @@
             }
         };
 
+        // Load Settings from localStorage on initialization
+        function loadSettings() {
+            const savedSpeed = localStorage.getItem('eye_trainer_speedMultiplier');
+            const savedSize = localStorage.getItem('eye_trainer_targetSize');
+            const savedDuration = localStorage.getItem('eye_trainer_routineDuration');
+            const savedExp = localStorage.getItem('eye_trainer_showExplanations');
+            const savedAuto = localStorage.getItem('eye_trainer_autoPlay');
+
+            if (savedSpeed !== null) speedInput.value = savedSpeed;
+            if (savedSize !== null) sizeInput.value = savedSize;
+            if (savedDuration !== null) durationInput.value = savedDuration;
+            if (savedExp !== null) expToggle.checked = (savedExp === 'true');
+            if (savedAuto !== null) autoContinueToggle.checked = (savedAuto === 'true');
+
+            updateConfigFromSliders();
+        }
+
         function updateConfigFromSliders() {
             speedMultiplier = parseFloat(speedInput.value);
             targetSize = parseInt(sizeInput.value);
             showExplanations = expToggle.checked;
             autoContinue = autoContinueToggle.checked;
+
+            // Cache configurations inside local storage
+            localStorage.setItem('eye_trainer_speedMultiplier', speedInput.value);
+            localStorage.setItem('eye_trainer_targetSize', sizeInput.value);
+            localStorage.setItem('eye_trainer_routineDuration', durationInput.value);
+            localStorage.setItem('eye_trainer_showExplanations', showExplanations);
+            localStorage.setItem('eye_trainer_autoPlay', autoContinue);
             
             // Update Text Displays
             document.getElementById('speed-val').innerText = speedMultiplier.toFixed(1) + "x";
@@ -858,6 +925,43 @@
             }
         });
 
+        /* Cancel Routine Handler */
+        function cancelRoutine() {
+            // Cancel and clear active loops/intervals
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (activeInterval) {
+                clearInterval(activeInterval);
+                activeInterval = null;
+            }
+            if (breakInterval) {
+                clearInterval(breakInterval);
+                breakInterval = null;
+            }
+
+            // Hide the Cancel button
+            cancelBtn.style.display = 'none';
+
+            // Reset visual environments
+            whiteBall.style.display = 'none';
+            redBall.style.display = 'none';
+            yellowBall.style.display = 'none';
+            crosshair.style.display = 'none';
+            breakOverlay.classList.remove('active');
+            clearHUD();
+
+            // Return smoothly to Menu
+            menu.style.display = 'flex';
+            setTimeout(() => {
+                menu.style.opacity = 1;
+            }, 50);
+
+            // Re-activate side panel preview system loops
+            animateSpeedPreview();
+        }
+
         function runBreak(nextStageFunction, stageName, stageNumber) {
             // Hide all active gameplay entities during the countdown break
             whiteBall.style.display = 'none';
@@ -944,6 +1048,9 @@
             stageDurationMs = (totalSeconds / 4) * 1000;
 
             applyTargetSizes(targetSize);
+
+            // Display cancel button
+            cancelBtn.style.display = 'flex';
 
             menu.style.opacity = 0;
             setTimeout(() => {
@@ -1154,6 +1261,7 @@
         function completeRoutine() {
             redBall.style.display = 'none';
             yellowBall.style.display = 'none';
+            cancelBtn.style.display = 'none';
             
             updateHUD("Training Complete! Excellent job.", "var(--brand-primary-hover)");
             
@@ -1174,8 +1282,8 @@
             return Math.random() * (max - min) + min;
         }
 
-        // Initialize setup state on page mount
-        updateConfigFromSliders();
+        // Initialize setup state on page mount and load any stored parameters
+        loadSettings();
         animateSpeedPreview();
     </script>
 </body>
