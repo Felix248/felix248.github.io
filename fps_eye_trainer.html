@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic FPS Eye Training Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --brand-primary: #e11d48; /* Premium satin crimson */
+            --brand-primary-hover: #f43f5e;
+            --brand-gradient: linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
+            --bg-main: #0a0a0c;
+            --bg-sandbox: #0f0f12;
+            --panel-bg: rgba(20, 20, 25, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(225, 29, 72, 0.15);
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            font-family: 'Montserrat', sans-serif;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-main);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #training-sandbox {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-sandbox);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Split-Panel Configuration Layout */
+        #setup-menu {
+            display: flex;
+            flex-direction: row;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            max-width: 950px;
+            width: 95%;
+            z-index: 10;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 
+                        0 0 40px var(--border-glow);
+            overflow: hidden;
+            transition: opacity 0.4s ease;
+        }
+
+        /* Left Controls Column */
+        .controls-panel {
+            flex: 1.2;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Right Preview Column */
+        .preview-panel {
+            flex: 1;
+            background: rgba(10, 10, 12, 0.5);
+            border-left: 1px solid var(--border-color);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            justify-content: center;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #ffffff;
+            font-size: 1.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            font-weight: 300;
+            margin-bottom: 30px;
+        }
+
+        .settings-box {
+            background: rgba(10, 10, 12, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        .settings-title {
+            font-weight: 600;
+            color: var(--brand-primary);
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+        .setting-row label:not(.toggle-switch) {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #e2e8f0;
+            flex: 1;
+            letter-spacing: 0.5px;
+        }
+        
+        .setting-row input[type="range"] {
+            flex: 1.5;
+            accent-color: var(--brand-primary);
+            cursor: pointer;
+            margin: 0 12px;
+            height: 4px;
+            background: rgba(25, 25, 25, 0.5);
+            border-radius: 2px;
+        }
+        .value-display {
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--brand-primary);
+            width: 75px;
+            text-align: right;
+        }
+
+        /* Custom iOS Style Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+            flex: 0 0 48px !important; /* Force tight bounds to fix stretch bug */
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.08);
+            transition: .3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #cbd5e1;
+            transition: .3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: var(--brand-primary);
+            border-color: var(--brand-primary);
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+            background-color: #ffffff;
+        }
+
+        .start-btn {
+            background: var(--brand-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 16px 45px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(225, 29, 72, 0.25);
+        }
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(225, 29, 72, 0.45);
+            background: linear-gradient(135deg, var(--brand-primary-hover) 0%, #be123c 100%);
+        }
+        .start-btn:active {
+            transform: translateY(0);
+        }
+
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+        }
+        .preview-title {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+        }
+        .preview-arena {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Size Arena (Static) */
+        .size-arena {
+            height: 110px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #static-size-ball {
+            border-radius: 50%;
+            background-color: #ffffff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+            transition: width 0.1s ease, height 0.1s ease;
+        }
+
+        /* Speed Arena (Dynamic Bouncing) */
+        .speed-arena {
+            height: 140px;
+        }
+        #speed-preview-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--brand-primary);
+            box-shadow: 0 0 12px rgba(225, 29, 72, 0.8);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Floating Gameplay HUD Status Capsule */
+        #instruction-hud {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 5;
+            background: rgba(15, 15, 18, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            padding: 12px 28px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        #instruction-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+            white-space: nowrap;
+        }
+
+        /* Premium Centered Intermission Overlay Card */
+        #break-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 520px;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                        transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 20;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 
+                        0 0 50px rgba(225, 29, 72, 0.15);
+        }
+        #break-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .break-badge {
+            display: inline-block;
+            background: rgba(225, 29, 72, 0.1);
+            color: var(--brand-primary);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            border: 1px solid rgba(225, 29, 72, 0.25);
+        }
+        .break-title {
+            font-size: 1.7rem;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            letter-spacing: 1px;
+            color: #ffffff;
+        }
+        
+        /* Modern Fancy Explanation Container */
+        .break-explanation-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .break-explanation-box p {
+            margin: 0;
+            color: #cbd5e1;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        /* Continue Intermission Button style */
+        .continue-btn {
+            background: var(--brand-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(225, 29, 72, 0.25);
+            margin-top: 10px;
+            display: none;
+        }
+        .continue-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(225, 29, 72, 0.45);
+            background: linear-gradient(135deg, var(--brand-primary-hover) 0%, #be123c 100%);
+        }
+        .continue-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Spinner Countdown Indicator */
+        .countdown-circle {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .countdown-spinner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.05);
+            border-top-color: var(--brand-primary);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .countdown-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            z-index: 2;
+        }
+
+        /* Dynamic Visual Entities */
+        .ball {
+            position: absolute;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none;
+        }
+        
+        #white-ball {
+            background-color: #ffffff;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.75);
+        }
+
+        #red-ball {
+            background-color: var(--brand-primary);
+            box-shadow: 0 0 25px rgba(225, 29, 72, 0.8);
+        }
+
+        #yellow-ball {
+            background-color: #eab308;
+            box-shadow: 0 0 25px rgba(234, 179, 8, 0.75);
+        }
+
+        /* Peripheral Crosshair System */
+        #central-crosshair {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            display: none;
+            pointer-events: none;
+        }
+        #central-crosshair::before, #central-crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: var(--brand-primary);
+            box-shadow: 0 0 8px rgba(225, 29, 72, 0.6);
+        }
+        #central-crosshair::before {
+            top: 19px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+        }
+        #central-crosshair::after {
+            top: 0;
+            left: 19px;
+            width: 2px;
+            height: 40px;
+        }
+
+        @media (max-width: 768px) {
+            #setup-menu {
+                flex-direction: column;
+            }
+            .preview-panel {
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="training-sandbox">
+        
+        <!-- Control Setup & Config Dashboard -->
+        <div id="setup-menu">
+            <div class="controls-panel">
+                <h1>Eye Trainer</h1>
+                <p>Recreates FPS focal tracking trajectories. Set up your training profile below using continuous constant-velocity routines.</p>
+                
+                <div class="settings-box">
+                    <div class="settings-title">Configuration Board</div>
+                    
+                    <!-- Speed Multiplier Range Control -->
+                    <div class="setting-row">
+                        <label for="speed-range">Speed Multiplier</label>
+                        <input type="range" id="speed-range" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateConfigFromSliders()">
+                        <span id="speed-val" class="value-display">1.0x</span>
+                    </div>
+
+                    <!-- Ball Sizing Configuration -->
+                    <div class="setting-row">
+                        <label for="size-range">Target Ball Size</label>
+                        <input type="range" id="size-range" min="20" max="80" step="5" value="50" oninput="updateConfigFromSliders()">
+                        <span id="size-val" class="value-display">50px</span>
+                    </div>
+
+                    <!-- Stage Timeline Length Control -->
+                    <div class="setting-row">
+                        <label for="duration-range">Routine Duration</label>
+                        <input type="range" id="duration-range" min="20" max="240" step="20" value="60" oninput="updateConfigFromSliders()">
+                        <span id="duration-val" class="value-display">1m 0s</span>
+                    </div>
+
+                    <!-- Fancy Explanation Toggle Row -->
+                    <div class="setting-row">
+                        <label for="explanation-toggle">Show Explanations</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="explanation-toggle" checked onchange="updateConfigFromSliders()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Auto Continue Toggle Row -->
+                    <div class="setting-row">
+                        <label for="autocontinue-toggle">Auto play</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="autocontinue-toggle" checked onchange="updateConfigFromSliders()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Individual Stage Duration Display Row -->
+                    <div class="setting-row" style="border-top: 1px solid var(--border-color); margin-top: 18px; padding-top: 15px;">
+                        <label style="font-weight: 600; color: #ffffff;">Stage Duration</label>
+                        <span id="total-val" class="value-display" style="width: auto; font-weight: 700; color: var(--brand-primary);">15s</span>
+                    </div>
+
+                    <!-- Entire Session Duration Display Row -->
+                    <div class="setting-row" style="margin-top: 8px;">
+                        <label style="font-weight: 500; color: var(--text-muted); font-size: 0.8rem;">Session Total (incl. prep)</label>
+                        <span id="session-total-val" class="value-display" style="width: auto; font-weight: 600; color: #ffffff; font-size: 0.85rem;">1m 12s</span>
+                    </div>
+                </div>
+
+                <button class="start-btn" onclick="startRoutine()">Launch Routine</button>
+            </div>
+
+            <!-- Double Isolated Previews Side Panel -->
+            <div class="preview-panel">
+                
+                <!-- Preview 1: Isolated Ball Size -->
+                <div class="preview-section">
+                    <div class="preview-title">Ball Size Preview (Static)</div>
+                    <div class="preview-arena size-arena">
+                        <div id="static-size-ball"></div>
+                    </div>
+                </div>
+
+                <!-- Preview 2: Isolated Speed Multiplier -->
+                <div class="preview-section">
+                    <div class="preview-title">Speed preview (max speed)</div>
+                    <div class="preview-arena speed-arena" id="speed-box">
+                        <div id="speed-preview-dot"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Fancy Intermission / Countdown Overlay Card -->
+        <div id="break-overlay">
+            <div class="break-badge" id="break-badge">EXERCISE 1/4</div>
+            <h2 class="break-title" id="break-title">Smooth Tracking</h2>
+            <div class="break-explanation-box" id="break-explanation-box">
+                <p id="break-instructions">Focus entirely on the white target ball. Smoothly follow its continuous trajectory without losing track.</p>
+            </div>
+            
+            <!-- Manual Action continue button -->
+            <button id="break-continue-btn" class="continue-btn">Start Task</button>
+
+            <!-- Countdown Timer element -->
+            <div class="countdown-circle">
+                <div class="countdown-spinner"></div>
+                <div class="countdown-number" id="countdown-number">3</div>
+            </div>
+        </div>
+
+        <!-- Instructional Subtitle Floating HUD Capsule -->
+        <div id="instruction-hud">
+            <div id="instruction-text">Prepare Yourself...</div>
+        </div>
+
+        <!-- Training Target Elements -->
+        <div id="white-ball" class="ball"></div>
+        <div id="red-ball" class="ball"></div>
+        <div id="yellow-ball" class="ball"></div>
+        <div id="central-crosshair"></div>
+
+    </div>
+
+    <script>
+        const whiteBall = document.getElementById('white-ball');
+        const redBall = document.getElementById('red-ball');
+        const yellowBall = document.getElementById('yellow-ball');
+        const crosshair = document.getElementById('central-crosshair');
+        const hud = document.getElementById('instruction-hud');
+        const hudText = document.getElementById('instruction-text');
+        const menu = document.getElementById('setup-menu');
+
+        // Break Overlay Elements
+        const breakOverlay = document.getElementById('break-overlay');
+        const breakTitle = document.getElementById('break-title');
+        const breakBadge = document.getElementById('break-badge');
+        const breakInstructions = document.getElementById('break-instructions');
+        const breakContinueBtn = document.getElementById('break-continue-btn');
+        const countdownNumber = document.getElementById('countdown-number');
+        const countdownCircle = document.querySelector('.countdown-circle');
+
+        // Configuration Inputs
+        const speedInput = document.getElementById('speed-range');
+        const sizeInput = document.getElementById('size-range');
+        const durationInput = document.getElementById('duration-range');
+        const expToggle = document.getElementById('explanation-toggle');
+        const autoContinueToggle = document.getElementById('autocontinue-toggle');
+        
+        // Preview Elements
+        const staticSizeBall = document.getElementById('static-size-ball');
+        const speedDot = document.getElementById('speed-preview-dot');
+        const speedArena = document.getElementById('speed-box');
+
+        let animationFrameId = null;
+        let previewFrameId = null;
+        let activeInterval = null;
+        let breakInterval = null; // Decoupled break timer reference
+
+        // Configuration variables captured at launch
+        let speedMultiplier = 1.0;
+        let targetSize = 50;
+        let stageDurationMs = 15000; 
+        let showExplanations = true;
+        let autoContinue = true;
+
+        const padding = 80;
+
+        // Isolated Velocity Preview Coordinates Tracker
+        let sCurrentX = 80;
+        let sCurrentY = 60;
+        let sDirX = 1;
+        let sDirY = 0.65;
+        const speedDotRadius = 6; 
+
+        // Dynamic Exercise Descriptions Database
+        const STAGE_INFO = {
+            1: {
+                title: "Smooth Tracking",
+                desc: "Focus entirely on the white target ball. Smoothly follow its continuous trajectory as it steadily accelerates."
+            },
+            2: {
+                title: "Peripheral Tracking",
+                desc: "Stare directly at the central red crosshair. Keep your gaze stable and track the moving white ball using only your peripheral vision."
+            },
+            3: {
+                title: "Fast Spatial Flashes",
+                desc: "Quickly snap your focus to the red target ball as it flashes instantly around the screen. Train your visual reaction time."
+            },
+            4: {
+                title: "Selective Attention",
+                desc: "Snap to the red target ball immediately when it spawns. Fully block out and ignore the yellow distractor ball."
+            }
+        };
+
+        function updateConfigFromSliders() {
+            speedMultiplier = parseFloat(speedInput.value);
+            targetSize = parseInt(sizeInput.value);
+            showExplanations = expToggle.checked;
+            autoContinue = autoContinueToggle.checked;
+            
+            // Update Text Displays
+            document.getElementById('speed-val').innerText = speedMultiplier.toFixed(1) + "x";
+            document.getElementById('size-val').innerText = targetSize + "px";
+            
+            const totalSeconds = parseInt(durationInput.value);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const totalStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            document.getElementById('duration-val').innerText = totalStr;
+
+            // Divide routine equally into 4 exercises (Smooth, Peripheral, Flashing, Selective)
+            const stageSeconds = totalSeconds / 4;
+            document.getElementById('total-val').innerText = `${stageSeconds}s`;
+
+            // Calculate total time including 3s prep per stage (4 stages * 3s = 12s)
+            const prepTime = 12; 
+            const fullSeconds = totalSeconds + prepTime;
+            const fullMinutes = Math.floor(fullSeconds / 60);
+            const remainingSeconds = fullSeconds % 60;
+            const fullStr = fullMinutes > 0 ? `${fullMinutes}m ${remainingSeconds}s` : `${remainingSeconds}s`;
+            
+            const sessionTotalVal = document.getElementById('session-total-val');
+            if (autoContinue) {
+                sessionTotalVal.innerText = fullStr;
+            } else {
+                sessionTotalVal.innerText = `${fullStr} + breaks`;
+            }
+
+            // Live adjust the Static Preview Ball Dimensions immediately
+            staticSizeBall.style.width = `${targetSize}px`;
+            staticSizeBall.style.height = `${targetSize}px`;
+        }
+
+        function animateSpeedPreview() {
+            const arenaWidth = speedArena.clientWidth;
+            const arenaHeight = speedArena.clientHeight;
+
+            // Velocity baseline vector match
+            let activeSpeed = 9 * speedMultiplier; 
+
+            sCurrentX += sDirX * activeSpeed;
+            sCurrentY += sDirY * activeSpeed;
+
+            // Horizontal Wall Canvas Collisions 
+            if (sCurrentX - speedDotRadius <= 0) {
+                sCurrentX = speedDotRadius;
+                sDirX *= -1;
+            } else if (sCurrentX + speedDotRadius >= arenaWidth) {
+                sCurrentX = arenaWidth - speedDotRadius;
+                sDirX *= -1;
+            }
+
+            // Vertical Wall Canvas Collisions
+            if (sCurrentY - speedDotRadius <= 0) {
+                sCurrentY = speedDotRadius;
+                sDirY *= -1;
+            } else if (sCurrentY + speedDotRadius >= arenaHeight) {
+                sCurrentY = arenaHeight - speedDotRadius;
+                sDirY *= -1;
+            }
+
+            speedDot.style.left = `${sCurrentX}px`;
+            speedDot.style.top = `${sCurrentY}px`;
+
+            previewFrameId = requestAnimationFrame(animateSpeedPreview);
+        }
+
+        function applyTargetSizes(size) {
+            const balls = document.querySelectorAll('.ball');
+            balls.forEach(ball => {
+                ball.style.width = `${size}px`;
+                ball.style.height = `${size}px`;
+            });
+        }
+        
+        function getViewportBoundaries() {
+            return {
+                maxX: window.innerWidth - padding,
+                minX: padding,
+                maxY: window.innerHeight - padding,
+                minY: padding
+            };
+        }
+
+        function updateHUD(text, color = "#ffffff") {
+            hudText.innerText = text;
+            hudText.style.color = color;
+            hud.style.opacity = 1;
+        }
+
+        function clearHUD() {
+            hud.style.opacity = 0;
+        }
+
+        function runBreak(nextStageFunction, stageName, stageNumber) {
+            // Hide all active gameplay entities during the countdown break
+            whiteBall.style.display = 'none';
+            redBall.style.display = 'none';
+            yellowBall.style.display = 'none';
+            crosshair.style.display = 'none';
+            clearHUD();
+
+            // Clear any active interval ticks immediately to avoid overlaps
+            if (breakInterval) {
+                clearInterval(breakInterval);
+                breakInterval = null;
+            }
+
+            // Feed info dynamically into the custom intermission card
+            const info = STAGE_INFO[stageNumber];
+            breakTitle.innerText = info.title;
+            breakBadge.innerText = `EXERCISE ${stageNumber}/4`;
+            breakInstructions.innerText = info.desc;
+
+            // Toggle visibility of explanation elements based on toggle state
+            const expBox = document.getElementById('break-explanation-box');
+            if (showExplanations) {
+                expBox.style.display = 'block';
+                breakBadge.style.display = 'inline-block';
+            } else {
+                expBox.style.display = 'none';
+                breakBadge.style.display = 'none';
+            }
+
+            // Trigger sleek scaling and blur transitions
+            breakOverlay.classList.add('active');
+
+            // Countdown Trigger Engine
+            function executeCountdown() {
+                breakContinueBtn.style.display = 'none';
+                countdownCircle.style.display = 'flex';
+                
+                let countdown = 3;
+                countdownNumber.innerText = countdown;
+
+                breakInterval = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        countdownNumber.innerText = countdown;
+                    } else {
+                        clearInterval(breakInterval);
+                        breakInterval = null;
+                        breakOverlay.classList.remove('active');
+                        // Brief delay to let scaling transition complete before starting exercise
+                        setTimeout(() => {
+                            nextStageFunction();
+                        }, 400);
+                    }
+                }, 1000);
+            }
+
+            // Evaluate if auto-progression is enabled or manual action is needed
+            if (autoContinue) {
+                breakContinueBtn.style.display = 'none';
+                countdownCircle.style.display = 'flex';
+                // Small buffer delay to allow panel visual transition before counting
+                setTimeout(() => {
+                    executeCountdown();
+                }, 350);
+            } else {
+                breakContinueBtn.style.display = 'block';
+                countdownCircle.style.display = 'none';
+                breakContinueBtn.onclick = () => {
+                    executeCountdown();
+                };
+            }
+        }
+
+        function startRoutine() {
+            // Cut processing updates for the config panel loop animations
+            cancelAnimationFrame(previewFrameId);
+
+            speedMultiplier = parseFloat(speedInput.value);
+            targetSize = parseInt(sizeInput.value);
+            
+            // Calculate timing partitions
+            const totalSeconds = parseInt(durationInput.value);
+            stageDurationMs = (totalSeconds / 4) * 1000;
+
+            applyTargetSizes(targetSize);
+
+            menu.style.opacity = 0;
+            setTimeout(() => {
+                menu.style.display = 'none';
+                // Launch Phase 1 break sequence
+                runBreak(executeStage1Part1, "Smooth Tracking", 1);
+            }, 400);
+        }
+
+        /* ==========================================
+           STAGE 1: Smooth Tracking & Peripheral Vision
+           ========================================== */
+        function executeStage1Part1() {
+            updateHUD("Track the white ball. (Gradually accelerating)");
+            whiteBall.style.display = 'block';
+
+            let bounds = getViewportBoundaries();
+            let currentX = window.innerWidth / 2;
+            let currentY = window.innerHeight / 2;
+            let targetX = getRandomArbitrary(bounds.minX, bounds.maxX);
+            let targetY = getRandomArbitrary(bounds.minY, bounds.maxY);
+            
+            // Define minimum and maximum speeds
+            const minSpeed = 3.5 * speedMultiplier;
+            const maxSpeed = 10.5 * speedMultiplier;
+            let startTime = performance.now();
+
+            setTimeout(() => clearHUD(), 3000);
+
+            function animateTracking(timestamp) {
+                let elapsed = timestamp - startTime;
+
+                // Calculate progress as a value from 0.0 to 1.0
+                let progress = Math.min(elapsed / stageDurationMs, 1.0);
+                
+                // Interpolate speed smoothly based on progression
+                let baseSpeed = minSpeed + (maxSpeed - minSpeed) * progress;
+
+                let dx = targetX - currentX;
+                let dy = targetY - currentY;
+                let distance = Math.hypot(dx, dy);
+
+                if (distance > baseSpeed) {
+                    currentX += (dx / distance) * baseSpeed;
+                    currentY += (dy / distance) * baseSpeed;
+                } else {
+                    currentX = targetX;
+                    currentY = targetY;
+                    bounds = getViewportBoundaries();
+                    targetX = getRandomArbitrary(bounds.minX, bounds.maxX);
+                    targetY = getRandomArbitrary(bounds.minY, bounds.maxY);
+                }
+
+                whiteBall.style.left = `${currentX}px`;
+                whiteBall.style.top = `${currentY}px`;
+
+                if (elapsed < stageDurationMs) {
+                    animationFrameId = requestAnimationFrame(animateTracking);
+                } else {
+                    cancelAnimationFrame(animationFrameId);
+                    // Launch Phase 2 countdown break
+                    runBreak(() => executeStage1Part2(currentX, currentY, targetX, targetY), "Peripheral Tracking", 2);
+                }
+            }
+            animationFrameId = requestAnimationFrame(animateTracking);
+        }
+
+        function executeStage1Part2(startX, startY, nextX, nextY) {
+            updateHUD("Focus on the Central Crosshair. Track the ball in your peripheral vision!", "var(--brand-primary)");
+            crosshair.style.display = 'block';
+            whiteBall.style.display = 'block';
+
+            let bounds = getViewportBoundaries();
+            let currentX = startX;
+            let currentY = startY;
+            let targetX = nextX;
+            let targetY = nextY;
+            let baseSpeed = 10 * speedMultiplier;
+            let startTime = performance.now();
+
+            setTimeout(() => clearHUD(), 4000);
+
+            function animatePeripheral(timestamp) {
+                let elapsed = timestamp - startTime;
+
+                let dx = targetX - currentX;
+                let dy = targetY - currentY;
+                let distance = Math.hypot(dx, dy);
+
+                if (distance > baseSpeed) {
+                    currentX += (dx / distance) * baseSpeed;
+                    currentY += (dy / distance) * baseSpeed;
+                } else {
+                    currentX = targetX;
+                    currentY = targetY;
+                    bounds = getViewportBoundaries();
+                    targetX = getRandomArbitrary(bounds.minX, bounds.maxX);
+                    targetY = getRandomArbitrary(bounds.minY, bounds.maxY);
+                }
+
+                whiteBall.style.left = `${currentX}px`;
+                whiteBall.style.top = `${currentY}px`;
+
+                if (elapsed < stageDurationMs) {
+                    animationFrameId = requestAnimationFrame(animatePeripheral);
+                } else {
+                    cancelAnimationFrame(animationFrameId);
+                    whiteBall.style.display = 'none';
+                    crosshair.style.display = 'none';
+                    // Launch Phase 3 countdown break
+                    runBreak(executeStage2, "Fast Spatial Flashes", 3);
+                }
+            }
+            animationFrameId = requestAnimationFrame(animatePeripheral);
+        }
+
+        /* ==========================================
+           STAGE 2: Fast Spatial Flash Reacting
+           ========================================== */
+        function executeStage2() {
+            updateHUD("Track the RED ball as it appears quickly around the screen.", "var(--brand-primary)");
+            redBall.style.display = 'block';
+            
+            let startTime = performance.now();
+            let flashInterval = 700 / speedMultiplier; 
+
+            setTimeout(() => clearHUD(), 3000);
+
+            function flashRedBall() {
+                let elapsed = performance.now() - startTime;
+                if (elapsed >= stageDurationMs) {
+                    clearInterval(activeInterval);
+                    activeInterval = null;
+                    redBall.style.display = 'none';
+                    // Launch Phase 4 countdown break
+                    runBreak(executeStage3, "Selective Attention", 4);
+                    return;
+                }
+
+                const bounds = getViewportBoundaries();
+                const randomX = getRandomArbitrary(bounds.minX, bounds.maxX);
+                const randomY = getRandomArbitrary(bounds.minY, bounds.maxY);
+
+                redBall.style.left = `${randomX}px`;
+                redBall.style.top = `${randomY}px`;
+            }
+
+            flashRedBall();
+            activeInterval = setInterval(flashRedBall, flashInterval);
+        }
+
+        /* ==========================================
+           STAGE 3: Selective Attention (Micro-Flicks)
+           ========================================== */
+        function executeStage3() {
+            updateHUD("SNAP focus to the RED ball. IGNORE the YELLOW ball!", "var(--brand-primary-hover)");
+            
+            setTimeout(() => clearHUD(), 4000);
+
+            redBall.style.display = 'block';
+            yellowBall.style.display = 'block';
+
+            let startTime = performance.now();
+            let swapInterval = 650 / speedMultiplier; 
+
+            function processCognitiveSplitFlick() {
+                let elapsed = performance.now() - startTime;
+                if (elapsed >= stageDurationMs) {
+                    clearInterval(activeInterval);
+                    activeInterval = null;
+                    completeRoutine();
+                    return;
+                }
+
+                const bounds = getViewportBoundaries();
+                
+                const redX = getRandomArbitrary(bounds.minX, bounds.maxX);
+                const redY = getRandomArbitrary(bounds.minY, bounds.maxY);
+                
+                let yellowX, yellowY;
+                let distanceSafetyThreshold = false;
+                let attempts = 0;
+
+                while (!distanceSafetyThreshold && attempts < 10) {
+                    yellowX = getRandomArbitrary(bounds.minX, bounds.maxX);
+                    yellowY = getRandomArbitrary(bounds.minY, bounds.maxY);
+                    attempts++;
+                    
+                    if (Math.hypot(redX - yellowX, redY - yellowY) > 250) {
+                        distanceSafetyThreshold = true;
+                    }
+                }
+
+                redBall.style.left = `${redX}px`;
+                redBall.style.top = `${redY}px`;
+
+                yellowBall.style.left = `${yellowX}px`;
+                yellowBall.style.top = `${yellowY}px`;
+            }
+
+            processCognitiveSplitFlick();
+            activeInterval = setInterval(processCognitiveSplitFlick, swapInterval); 
+        }
+
+        /* ==========================================
+           End Session Routines
+           ========================================== */
+        function completeRoutine() {
+            redBall.style.display = 'none';
+            yellowBall.style.display = 'none';
+            
+            updateHUD("Training Complete! Excellent job.", "var(--brand-primary-hover)");
+            
+            setTimeout(() => {
+                clearHUD();
+                menu.style.display = 'flex';
+                setTimeout(() => {
+                    menu.style.opacity = 1;
+                }, 50);
+                const button = menu.querySelector('.start-btn');
+                button.innerText = "Train Again";
+                // Resume preview panel animation engine loops
+                animateSpeedPreview();
+            }, 3500);
+        }
+
+        function getRandomArbitrary(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // Initialize setup state on page mount
+        updateConfigFromSliders();
+        animateSpeedPreview();
+    </script>
+</body>
+</html>
