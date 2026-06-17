@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Dynamic FPS Eye Training Simulator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,37 +15,48 @@
             --brand-gradient: linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
             --bg-main: #0a0a0c;
             --bg-sandbox: #0f0f12;
-            --panel-bg: rgba(20, 20, 25, 0.85);
+            --panel-bg: rgba(20, 20, 25, 0.92);
             --border-color: rgba(255, 255, 255, 0.08);
             --border-glow: rgba(225, 29, 72, 0.15);
             --text-muted: #94a3b8;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         * {
             box-sizing: border-box;
             user-select: none;
+            -webkit-user-select: none;
             font-family: 'Montserrat', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
+
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-main);
             color: #ffffff;
             overflow: hidden;
+            width: 100vw;
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            touch-action: none;
         }
 
         #training-sandbox {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background-color: var(--bg-sandbox);
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
+            touch-action: none;
         }
 
         /* Split-Panel Configuration Layout */
@@ -53,17 +64,26 @@
             display: flex;
             flex-direction: row;
             background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
             border: 1px solid var(--border-color);
             max-width: 950px;
             width: 95%;
+            max-height: 85vh;
             z-index: 10;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 
                         0 0 40px var(--border-glow);
             overflow: hidden;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        /* Scrollable container for setup panels to avoid mobile clipping */
+        .panel-scroller {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            height: 100%;
         }
 
         /* Left Controls Column */
@@ -73,28 +93,32 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            overflow-y: auto;
+            min-height: 0;
         }
 
         /* Right Preview Column */
         .preview-panel {
             flex: 1;
-            background: rgba(10, 10, 12, 0.5);
+            background: rgba(10, 10, 12, 0.65);
             border-left: 1px solid var(--border-color);
-            padding: 30px;
+            padding: 40px;
             display: flex;
             flex-direction: column;
             gap: 24px;
             justify-content: center;
+            overflow-y: auto;
+            min-height: 0;
         }
 
         h1 {
             margin-top: 0;
             color: #ffffff;
-            font-size: 1.9rem;
+            font-size: 1.8rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 3px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -102,39 +126,43 @@
         
         p {
             color: var(--text-muted);
-            font-size: 0.9rem;
-            line-height: 1.6;
+            font-size: 0.85rem;
+            line-height: 1.5;
             font-weight: 300;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
         }
 
         .settings-box {
             background: rgba(10, 10, 12, 0.6);
             border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 24px;
-            margin-bottom: 30px;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
             text-align: left;
         }
+        
         .settings-title {
-            font-weight: 600;
+            font-weight: 700;
             color: var(--brand-primary);
-            margin-bottom: 20px;
-            font-size: 0.85rem;
+            margin-bottom: 16px;
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 2px;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 8px;
         }
+        
         .setting-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
+        
         .setting-row:last-child {
             margin-bottom: 0;
         }
+        
         .setting-row label:not(.toggle-switch) {
             font-size: 0.85rem;
             font-weight: 500;
@@ -143,21 +171,42 @@
             letter-spacing: 0.5px;
         }
         
+        /* Mobile-optimized range slider styling */
         .setting-row input[type="range"] {
             flex: 1.5;
             accent-color: var(--brand-primary);
             cursor: pointer;
-            margin: 0 12px;
-            height: 4px;
-            background: rgba(25, 25, 25, 0.5);
-            border-radius: 2px;
+            margin: 0 10px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
         }
+
+        .setting-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid var(--brand-primary);
+            box-shadow: 0 0 10px rgba(225, 29, 72, 0.5);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .setting-row input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.3);
+        }
+
         .value-display {
             font-family: monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: var(--brand-primary);
-            width: 75px;
+            width: 65px;
             text-align: right;
         }
 
@@ -165,9 +214,10 @@
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 48px;
-            height: 24px;
-            flex: 0 0 48px !important; /* Force tight bounds to fix stretch bug */
+            width: 52px;
+            height: 28px;
+            flex: 0 0 52px !important;
+            cursor: pointer;
         }
         .toggle-switch input {
             opacity: 0;
@@ -176,21 +226,20 @@
         }
         .toggle-slider {
             position: absolute;
-            cursor: pointer;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
             background-color: rgba(255, 255, 255, 0.08);
             transition: .3s cubic-bezier(0.16, 1, 0.3, 1);
-            border-radius: 24px;
+            border-radius: 28px;
             border: 1px solid var(--border-color);
         }
         .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 16px;
-            width: 16px;
+            height: 20px;
+            width: 20px;
             left: 3px;
             bottom: 3px;
             background-color: #cbd5e1;
@@ -204,30 +253,74 @@
         input:checked + .toggle-slider:before {
             transform: translateX(24px);
             background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
         }
 
         .start-btn {
             background: var(--brand-gradient);
             color: #ffffff;
             border: none;
-            padding: 16px 45px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 8px;
+            padding: 16px 36px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-radius: 10px;
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 2px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             width: 100%;
-            box-shadow: 0 4px 15px rgba(225, 29, 72, 0.25);
+            box-shadow: 0 4px 15px rgba(225, 29, 72, 0.3);
+            margin-top: auto;
         }
-        .start-btn:hover {
+        .start-btn:hover, .start-btn:active {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(225, 29, 72, 0.45);
+            box-shadow: 0 6px 20px rgba(225, 29, 72, 0.5);
             background: linear-gradient(135deg, var(--brand-primary-hover) 0%, #be123c 100%);
         }
         .start-btn:active {
-            transform: translateY(0);
+            transform: translateY(1px);
+        }
+
+        /* Mobile Collapsible Preview Container (Hidden on Desktop) */
+        .mobile-preview-accordion {
+            display: none;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(10, 10, 12, 0.4);
+        }
+        .accordion-header {
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-bottom: 1px solid transparent;
+        }
+        .accordion-header.active {
+            border-bottom-color: var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .accordion-header::after {
+            content: "▼";
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+            color: var(--brand-primary);
+        }
+        .accordion-header.active::after {
+            transform: rotate(180deg);
+        }
+        .accordion-content {
+            display: none;
+            padding: 16px;
+            gap: 16px;
+            flex-direction: column;
         }
 
         .preview-section {
@@ -253,12 +346,12 @@
         
         /* Size Arena (Static) */
         .size-arena {
-            height: 110px;
+            height: 90px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        #static-size-ball {
+        .static-size-ball {
             border-radius: 50%;
             background-color: #ffffff;
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
@@ -267,7 +360,7 @@
 
         /* Speed Arena (Dynamic Bouncing) */
         .speed-arena {
-            height: 140px;
+            height: 110px;
         }
         #speed-preview-dot {
             position: absolute;
@@ -284,7 +377,7 @@
         /* Floating Gameplay HUD Status Capsule */
         #instruction-hud {
             position: absolute;
-            top: 40px;
+            top: calc(20px + var(--safe-top));
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
@@ -292,27 +385,30 @@
             opacity: 0;
             transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 5;
-            background: rgba(15, 15, 18, 0.7);
+            background: rgba(15, 15, 18, 0.85);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid var(--border-color);
-            padding: 12px 28px;
+            padding: 10px 20px;
             border-radius: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 90%;
+            box-sizing: border-box;
         }
         #instruction-text {
-            font-size: 0.9rem;
-            font-weight: 500;
+            font-size: 0.8rem;
+            font-weight: 600;
             letter-spacing: 0.5px;
             color: #ffffff;
-            white-space: nowrap;
+            white-space: normal;
+            word-break: keep-all;
         }
 
         /* Floating Fullscreen Toggle Button */
         .fullscreen-btn {
             position: absolute;
-            top: 40px;
-            right: 40px;
+            top: calc(20px + var(--safe-top));
+            right: 20px;
             width: 44px;
             height: 44px;
             background: rgba(15, 15, 18, 0.7);
@@ -342,13 +438,13 @@
             transition: transform 0.2s ease;
         }
 
-        /* Floating Cancel Button (Bottom Right) */
+        /* Floating Cancel Button */
         .cancel-btn {
             position: absolute;
-            bottom: 40px;
-            right: 40px;
-            padding: 12px 24px;
-            background: rgba(15, 15, 18, 0.75);
+            top: calc(20px + var(--safe-top));
+            left: 20px;
+            padding: 10px 18px;
+            background: rgba(15, 15, 18, 0.85);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid var(--border-color);
@@ -361,9 +457,9 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             color: #ffffff;
-            font-size: 0.8rem;
-            font-weight: 600;
-            letter-spacing: 1.5px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
             text-transform: uppercase;
         }
         .cancel-btn:hover {
@@ -384,9 +480,9 @@
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: 20px;
-            padding: 40px;
+            padding: 30px 24px;
             width: 90%;
-            max-width: 520px;
+            max-width: 460px;
             text-align: center;
             opacity: 0;
             pointer-events: none;
@@ -395,6 +491,8 @@
             z-index: 20;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 
                         0 0 50px rgba(225, 29, 72, 0.15);
+            max-height: 85vh;
+            overflow-y: auto;
         }
         #break-overlay.active {
             opacity: 1;
@@ -406,19 +504,19 @@
             display: inline-block;
             background: rgba(225, 29, 72, 0.1);
             color: var(--brand-primary);
-            padding: 6px 16px;
+            padding: 6px 14px;
             border-radius: 20px;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 700;
             letter-spacing: 2px;
             text-transform: uppercase;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             border: 1px solid rgba(225, 29, 72, 0.25);
         }
         .break-title {
-            font-size: 1.7rem;
+            font-size: 1.4rem;
             font-weight: 700;
-            margin: 0 0 16px 0;
+            margin: 0 0 12px 0;
             letter-spacing: 1px;
             color: #ffffff;
         }
@@ -428,16 +526,16 @@
             background: rgba(0, 0, 0, 0.4);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
+            padding: 16px;
+            margin-bottom: 24px;
             text-align: left;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
         }
         .break-explanation-box p {
             margin: 0;
             color: #cbd5e1;
-            font-size: 0.85rem;
-            line-height: 1.6;
+            font-size: 0.8rem;
+            line-height: 1.5;
             font-weight: 400;
         }
 
@@ -446,33 +544,29 @@
             background: var(--brand-gradient);
             color: #ffffff;
             border: none;
-            padding: 15px 40px;
-            font-size: 1rem;
-            font-weight: 600;
+            padding: 14px 30px;
+            font-size: 0.9rem;
+            font-weight: 700;
             border-radius: 8px;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            letter-spacing: 1.5px;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             width: 100%;
             box-shadow: 0 4px 15px rgba(225, 29, 72, 0.25);
             margin-top: 10px;
             display: none;
         }
-        .continue-btn:hover {
+        .continue-btn:hover, .continue-btn:active {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(225, 29, 72, 0.45);
-            background: linear-gradient(135deg, var(--brand-primary-hover) 0%, #be123c 100%);
-        }
-        .continue-btn:active {
-            transform: translateY(0);
         }
 
         /* Spinner Countdown Indicator */
         .countdown-circle {
             position: relative;
-            width: 76px;
-            height: 76px;
+            width: 64px;
+            height: 64px;
             margin: 0 auto;
             display: flex;
             align-items: center;
@@ -494,7 +588,7 @@
             100% { transform: rotate(360deg); }
         }
         .countdown-number {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: #ffffff;
             z-index: 2;
@@ -507,6 +601,8 @@
             transform: translate(-50%, -50%);
             pointer-events: none;
             display: none;
+            will-change: left, top;
+            touch-action: none;
         }
         
         #white-ball {
@@ -554,20 +650,36 @@
         @media (max-width: 768px) {
             #setup-menu {
                 flex-direction: column;
+                max-height: 92vh;
             }
+            .panel-scroller {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            .controls-panel {
+                padding: 24px 20px;
+                overflow-y: visible;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            /* Hide original desktop preview panel entirely to avoid layout bloat */
             .preview-panel {
-                border-left: none;
-                border-top: 1px solid var(--border-color);
+                display: none;
+            }
+            /* Show responsive accordion for preview sections on mobile */
+            .mobile-preview-accordion {
+                display: block;
             }
             .fullscreen-btn {
-                top: 20px;
-                right: 20px;
+                top: calc(15px + var(--safe-top));
+                right: 15px;
             }
             .cancel-btn {
-                bottom: 20px;
-                right: 20px;
-                padding: 10px 18px;
-                font-size: 0.75rem;
+                top: calc(15px + var(--safe-top));
+                left: 15px;
+                padding: 8px 14px;
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -586,15 +698,39 @@
 
         <!-- Floating Cancel Button -->
         <button id="cancel-routine" class="cancel-btn" onclick="cancelRoutine()" title="Cancel Training Session">
-            Cancel Training
+            Cancel
         </button>
 
         <!-- Control Setup & Config Dashboard -->
         <div id="setup-menu">
+            <!-- Left Panel (Controls) -->
             <div class="controls-panel">
                 <h1>Eye Trainer</h1>
                 <p>Recreates FPS focal tracking trajectories. Set up your training profile below using continuous constant-velocity routines.</p>
                 
+                <!-- Mobile Preview Accordion Section (Hidden on PC, visible on Mobile) -->
+                <div class="mobile-preview-accordion">
+                    <div class="accordion-header" id="mobile-accordion-toggle">
+                        👁️ Show Live Previews
+                    </div>
+                    <div class="accordion-content" id="mobile-accordion-content">
+                        <!-- Mobile Preview 1: Isolated Ball Size -->
+                        <div class="preview-section">
+                            <div class="preview-title">Ball Size Preview</div>
+                            <div class="preview-arena size-arena">
+                                <div id="static-size-ball-mobile" class="static-size-ball"></div>
+                            </div>
+                        </div>
+                        <!-- Mobile Preview 2: Isolated Speed Multiplier -->
+                        <div class="preview-section">
+                            <div class="preview-title">Speed Preview (Max Speed)</div>
+                            <div class="preview-arena speed-arena" id="mobile-speed-box">
+                                <!-- Dynamic Dot loaded inside scripting -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="settings-box">
                     <div class="settings-title">Configuration Board</div>
                     
@@ -628,11 +764,21 @@
                         </label>
                     </div>
 
+                    <!-- Sound Effects Toggle Row -->
+                    <div class="setting-row">
+                        <label for="sound-toggle">Sound Effects</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sound-toggle" checked onchange="updateConfigFromSliders()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
                     <!-- Auto Continue Toggle Row -->
                     <div class="setting-row">
-                        <label for="autocontinue-toggle">Auto play</label>
+                        <label for="autocontinue-toggle">Auto Play</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="autocontinue-toggle" checked onchange="updateConfigFromSliders()">
+                            <!-- Unchecked by default per user request -->
+                            <input type="checkbox" id="autocontinue-toggle" onchange="updateConfigFromSliders()">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -653,14 +799,13 @@
                 <button class="start-btn" onclick="startRoutine()">Launch Routine</button>
             </div>
 
-            <!-- Double Isolated Previews Side Panel -->
+            <!-- Right Panel (Previews - Desktop ONLY) -->
             <div class="preview-panel">
-                
                 <!-- Preview 1: Isolated Ball Size -->
                 <div class="preview-section">
                     <div class="preview-title">Ball Size Preview (Static)</div>
                     <div class="preview-arena size-arena">
-                        <div id="static-size-ball"></div>
+                        <div id="static-size-ball-desktop" class="static-size-ball"></div>
                     </div>
                 </div>
 
@@ -671,7 +816,6 @@
                         <div id="speed-preview-dot"></div>
                     </div>
                 </div>
-
             </div>
         </div>
 
@@ -731,26 +875,34 @@
         const durationInput = document.getElementById('duration-range');
         const expToggle = document.getElementById('explanation-toggle');
         const autoContinueToggle = document.getElementById('autocontinue-toggle');
+        const soundToggle = document.getElementById('sound-toggle');
         
         // Preview Elements
-        const staticSizeBall = document.getElementById('static-size-ball');
+        const staticSizeBallMobile = document.getElementById('static-size-ball-mobile');
+        const staticSizeBallDesktop = document.getElementById('static-size-ball-desktop');
         const speedDot = document.getElementById('speed-preview-dot');
         const speedArena = document.getElementById('speed-box');
+        const mobileSpeedArena = document.getElementById('mobile-speed-box');
         const fullscreenIcon = document.getElementById('fullscreen-icon');
 
+        // Mobile Accordion DOM targets
+        const accordionHeader = document.getElementById('mobile-accordion-toggle');
+        const accordionContent = document.getElementById('mobile-accordion-content');
+
+        // --- GLOBAL STATE & TIMERS ---
+        // These track active animation loops/intervals so they can be canceled reliably
         let animationFrameId = null;
         let previewFrameId = null;
         let activeInterval = null;
-        let breakInterval = null; // Decoupled break timer reference
+        let breakInterval = null; 
 
         // Configuration variables captured at launch
         let speedMultiplier = 1.0;
         let targetSize = 50;
         let stageDurationMs = 15000; 
         let showExplanations = true;
-        let autoContinue = true;
-
-        const padding = 80;
+        let autoContinue = false; // Off by default
+        let soundEffectsEnabled = true;
 
         // Isolated Velocity Preview Coordinates Tracker
         let sCurrentX = 80;
@@ -758,6 +910,58 @@
         let sDirX = 1;
         let sDirY = 0.65;
         const speedDotRadius = 6; 
+
+        // --- AUDIO SYNTHESIS ENGINE ---
+        // Generates UI beeps and target plops dynamically using Web Audio API
+        let audioCtx = null;
+        
+        function playTone(freq, type, duration) {
+            // Respect the global sound effects toggle
+            if (!soundEffectsEnabled) return;
+
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                if (type === 'plop') {
+                    // Soft Pop - Quick attack, fast pitch drop
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 0.3, audioCtx.currentTime + duration);
+                    
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                } else {
+                    // Standard UI Tones
+                    osc.type = type || 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                }
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.warn('Audio synthesis initialized with error: ', e);
+            }
+        }
+
+        // Responsive edge-clipping padding calculator based on screen dimensions
+        function getViewportPadding() {
+            return window.innerWidth < 768 ? (targetSize / 2) + 20 : 80;
+        }
 
         // Dynamic Exercise Descriptions Database
         const STAGE_INFO = {
@@ -779,6 +983,18 @@
             }
         };
 
+        // Mobile Accordion UI Disclosure Toggle logic
+        accordionHeader.addEventListener('click', () => {
+            const isActive = accordionHeader.classList.toggle('active');
+            if (isActive) {
+                accordionContent.style.display = 'flex';
+                mobileSpeedArena.appendChild(speedDot);
+            } else {
+                accordionContent.style.display = 'none';
+                speedArena.appendChild(speedDot);
+            }
+        });
+
         // Load Settings from localStorage on initialization
         function loadSettings() {
             const savedSpeed = localStorage.getItem('eye_trainer_speedMultiplier');
@@ -786,12 +1002,14 @@
             const savedDuration = localStorage.getItem('eye_trainer_routineDuration');
             const savedExp = localStorage.getItem('eye_trainer_showExplanations');
             const savedAuto = localStorage.getItem('eye_trainer_autoPlay');
+            const savedSound = localStorage.getItem('eye_trainer_soundEffects');
 
             if (savedSpeed !== null) speedInput.value = savedSpeed;
             if (savedSize !== null) sizeInput.value = savedSize;
             if (savedDuration !== null) durationInput.value = savedDuration;
             if (savedExp !== null) expToggle.checked = (savedExp === 'true');
             if (savedAuto !== null) autoContinueToggle.checked = (savedAuto === 'true');
+            if (savedSound !== null) soundToggle.checked = (savedSound === 'true');
 
             updateConfigFromSliders();
         }
@@ -801,6 +1019,7 @@
             targetSize = parseInt(sizeInput.value);
             showExplanations = expToggle.checked;
             autoContinue = autoContinueToggle.checked;
+            soundEffectsEnabled = soundToggle.checked;
 
             // Cache configurations inside local storage
             localStorage.setItem('eye_trainer_speedMultiplier', speedInput.value);
@@ -808,6 +1027,7 @@
             localStorage.setItem('eye_trainer_routineDuration', durationInput.value);
             localStorage.setItem('eye_trainer_showExplanations', showExplanations);
             localStorage.setItem('eye_trainer_autoPlay', autoContinue);
+            localStorage.setItem('eye_trainer_soundEffects', soundEffectsEnabled);
             
             // Update Text Displays
             document.getElementById('speed-val').innerText = speedMultiplier.toFixed(1) + "x";
@@ -819,7 +1039,7 @@
             const totalStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
             document.getElementById('duration-val').innerText = totalStr;
 
-            // Divide routine equally into 4 exercises (Smooth, Peripheral, Flashing, Selective)
+            // Divide routine equally into 4 exercises
             const stageSeconds = totalSeconds / 4;
             document.getElementById('total-val').innerText = `${stageSeconds}s`;
 
@@ -837,22 +1057,35 @@
                 sessionTotalVal.innerText = `${fullStr} + breaks`;
             }
 
-            // Live adjust the Static Preview Ball Dimensions immediately
-            staticSizeBall.style.width = `${targetSize}px`;
-            staticSizeBall.style.height = `${targetSize}px`;
+            // Live adjust both desktop and mobile static previews
+            if (staticSizeBallMobile) {
+                staticSizeBallMobile.style.width = `${targetSize}px`;
+                staticSizeBallMobile.style.height = `${targetSize}px`;
+            }
+            if (staticSizeBallDesktop) {
+                staticSizeBallDesktop.style.width = `${targetSize}px`;
+                staticSizeBallDesktop.style.height = `${targetSize}px`;
+            }
         }
 
         function animateSpeedPreview() {
-            const arenaWidth = speedArena.clientWidth;
-            const arenaHeight = speedArena.clientHeight;
+            const isMobile = window.innerWidth <= 768;
+            const activeArena = (isMobile && accordionHeader.classList.contains('active')) ? mobileSpeedArena : speedArena;
+            
+            // Ensure dot is inside the correct container parent
+            if (activeArena && speedDot.parentElement !== activeArena) {
+                activeArena.appendChild(speedDot);
+            }
 
-            // Velocity baseline vector match
+            const arenaWidth = activeArena ? activeArena.clientWidth : 200;
+            const arenaHeight = activeArena ? activeArena.clientHeight : 110;
+
             let activeSpeed = 9 * speedMultiplier; 
 
             sCurrentX += sDirX * activeSpeed;
             sCurrentY += sDirY * activeSpeed;
 
-            // Horizontal Wall Canvas Collisions 
+            // Horizontal Collisions 
             if (sCurrentX - speedDotRadius <= 0) {
                 sCurrentX = speedDotRadius;
                 sDirX *= -1;
@@ -861,7 +1094,7 @@
                 sDirX *= -1;
             }
 
-            // Vertical Wall Canvas Collisions
+            // Vertical Collisions
             if (sCurrentY - speedDotRadius <= 0) {
                 sCurrentY = speedDotRadius;
                 sDirY *= -1;
@@ -885,11 +1118,12 @@
         }
         
         function getViewportBoundaries() {
+            const dynamicPad = getViewportPadding();
             return {
-                maxX: window.innerWidth - padding,
-                minX: padding,
-                maxY: window.innerHeight - padding,
-                minY: padding
+                maxX: window.innerWidth - dynamicPad,
+                minX: dynamicPad,
+                maxY: window.innerHeight - dynamicPad,
+                minY: dynamicPad
             };
         }
 
@@ -914,20 +1148,16 @@
             }
         }
 
-        // Listen for changes in browser viewport mode to update icon sets
         document.addEventListener('fullscreenchange', () => {
             if (document.fullscreenElement) {
-                // Exit Fullscreen Icon
                 fullscreenIcon.innerHTML = `<path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>`;
             } else {
-                // Enter Fullscreen Icon
                 fullscreenIcon.innerHTML = `<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>`;
             }
         });
 
         /* Cancel Routine Handler */
         function cancelRoutine() {
-            // Cancel and clear active loops/intervals
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -941,10 +1171,8 @@
                 breakInterval = null;
             }
 
-            // Hide the Cancel button
             cancelBtn.style.display = 'none';
 
-            // Reset visual environments
             whiteBall.style.display = 'none';
             redBall.style.display = 'none';
             yellowBall.style.display = 'none';
@@ -952,37 +1180,38 @@
             breakOverlay.classList.remove('active');
             clearHUD();
 
-            // Return smoothly to Menu
             menu.style.display = 'flex';
             setTimeout(() => {
                 menu.style.opacity = 1;
             }, 50);
 
-            // Re-activate side panel preview system loops
             animateSpeedPreview();
         }
 
+        // --- TRANSITION & BREAK ENGINE ---
+        // Handles the intermission overlay, the 3-second countdown, and triggering the next stage
         function runBreak(nextStageFunction, stageName, stageNumber) {
-            // Hide all active gameplay entities during the countdown break
             whiteBall.style.display = 'none';
             redBall.style.display = 'none';
             yellowBall.style.display = 'none';
             crosshair.style.display = 'none';
             clearHUD();
 
-            // Clear any active interval ticks immediately to avoid overlaps
+            // Reset countdown immediately to prevent glitching the old number
+            countdownNumber.innerText = '3';
+
+            playTone(440, 'sine', 0.25);
+
             if (breakInterval) {
                 clearInterval(breakInterval);
                 breakInterval = null;
             }
 
-            // Feed info dynamically into the custom intermission card
             const info = STAGE_INFO[stageNumber];
             breakTitle.innerText = info.title;
             breakBadge.innerText = `EXERCISE ${stageNumber}/4`;
             breakInstructions.innerText = info.desc;
 
-            // Toggle visibility of explanation elements based on toggle state
             const expBox = document.getElementById('break-explanation-box');
             if (showExplanations) {
                 expBox.style.display = 'block';
@@ -992,26 +1221,26 @@
                 breakBadge.style.display = 'none';
             }
 
-            // Trigger sleek scaling and blur transitions
             breakOverlay.classList.add('active');
 
-            // Countdown Trigger Engine
             function executeCountdown() {
                 breakContinueBtn.style.display = 'none';
                 countdownCircle.style.display = 'flex';
                 
                 let countdown = 3;
                 countdownNumber.innerText = countdown;
+                playTone(520, 'sine', 0.08);
 
                 breakInterval = setInterval(() => {
                     countdown--;
                     if (countdown > 0) {
                         countdownNumber.innerText = countdown;
+                        playTone(520, 'sine', 0.08);
                     } else {
                         clearInterval(breakInterval);
                         breakInterval = null;
                         breakOverlay.classList.remove('active');
-                        // Brief delay to let scaling transition complete before starting exercise
+                        playTone(880, 'triangle', 0.3);
                         setTimeout(() => {
                             nextStageFunction();
                         }, 400);
@@ -1019,11 +1248,9 @@
                 }, 1000);
             }
 
-            // Evaluate if auto-progression is enabled or manual action is needed
             if (autoContinue) {
                 breakContinueBtn.style.display = 'none';
                 countdownCircle.style.display = 'flex';
-                // Small buffer delay to allow panel visual transition before counting
                 setTimeout(() => {
                     executeCountdown();
                 }, 350);
@@ -1036,33 +1263,41 @@
             }
         }
 
+        // --- LAUNCH ENGINE ---
+        // Bootstraps audio, parses settings, and fires the first stage
         function startRoutine() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch (e) {
+                console.warn('Audio Context failed to initialize: ', e);
+            }
+
             // Cut processing updates for the config panel loop animations
             cancelAnimationFrame(previewFrameId);
 
             speedMultiplier = parseFloat(speedInput.value);
             targetSize = parseInt(sizeInput.value);
             
-            // Calculate timing partitions
             const totalSeconds = parseInt(durationInput.value);
             stageDurationMs = (totalSeconds / 4) * 1000;
 
             applyTargetSizes(targetSize);
-
-            // Display cancel button
             cancelBtn.style.display = 'flex';
 
             menu.style.opacity = 0;
             setTimeout(() => {
                 menu.style.display = 'none';
-                // Launch Phase 1 break sequence
                 runBreak(executeStage1Part1, "Smooth Tracking", 1);
             }, 400);
         }
 
-        /* ==========================================
-           STAGE 1: Smooth Tracking & Peripheral Vision
-           ========================================== */
+        /* STAGE 1: Smooth Tracking & Peripheral Vision */
+        // Logic: Continuous linear movement towards randomized goals
         function executeStage1Part1() {
             updateHUD("Track the white ball. (Gradually accelerating)");
             whiteBall.style.display = 'block';
@@ -1073,7 +1308,6 @@
             let targetX = getRandomArbitrary(bounds.minX, bounds.maxX);
             let targetY = getRandomArbitrary(bounds.minY, bounds.maxY);
             
-            // Define minimum and maximum speeds
             const minSpeed = 3.5 * speedMultiplier;
             const maxSpeed = 10.5 * speedMultiplier;
             let startTime = performance.now();
@@ -1082,11 +1316,7 @@
 
             function animateTracking(timestamp) {
                 let elapsed = timestamp - startTime;
-
-                // Calculate progress as a value from 0.0 to 1.0
                 let progress = Math.min(elapsed / stageDurationMs, 1.0);
-                
-                // Interpolate speed smoothly based on progression
                 let baseSpeed = minSpeed + (maxSpeed - minSpeed) * progress;
 
                 let dx = targetX - currentX;
@@ -1111,7 +1341,6 @@
                     animationFrameId = requestAnimationFrame(animateTracking);
                 } else {
                     cancelAnimationFrame(animationFrameId);
-                    // Launch Phase 2 countdown break
                     runBreak(() => executeStage1Part2(currentX, currentY, targetX, targetY), "Peripheral Tracking", 2);
                 }
             }
@@ -1122,6 +1351,9 @@
             updateHUD("Focus on the Central Crosshair. Track the ball in your peripheral vision!", "var(--brand-primary)");
             crosshair.style.display = 'block';
             whiteBall.style.display = 'block';
+
+            crosshair.style.left = `${window.innerWidth / 2 - 20}px`;
+            crosshair.style.top = `${window.innerHeight / 2 - 20}px`;
 
             let bounds = getViewportBoundaries();
             let currentX = startX;
@@ -1160,16 +1392,14 @@
                     cancelAnimationFrame(animationFrameId);
                     whiteBall.style.display = 'none';
                     crosshair.style.display = 'none';
-                    // Launch Phase 3 countdown break
                     runBreak(executeStage2, "Fast Spatial Flashes", 3);
                 }
             }
             animationFrameId = requestAnimationFrame(animatePeripheral);
         }
 
-        /* ==========================================
-           STAGE 2: Fast Spatial Flash Reacting
-           ========================================== */
+        /* STAGE 2: Fast Spatial Flash Reacting */
+        // Logic: Ball teleports at intervals testing snap reaction time
         function executeStage2() {
             updateHUD("Track the RED ball as it appears quickly around the screen.", "var(--brand-primary)");
             redBall.style.display = 'block';
@@ -1185,7 +1415,6 @@
                     clearInterval(activeInterval);
                     activeInterval = null;
                     redBall.style.display = 'none';
-                    // Launch Phase 4 countdown break
                     runBreak(executeStage3, "Selective Attention", 4);
                     return;
                 }
@@ -1196,15 +1425,17 @@
 
                 redBall.style.left = `${randomX}px`;
                 redBall.style.top = `${randomY}px`;
+                
+                // Triggers the soft Aimlabs style plop sound here
+                playTone(450, 'plop', 0.1);
             }
 
             flashRedBall();
             activeInterval = setInterval(flashRedBall, flashInterval);
         }
 
-        /* ==========================================
-           STAGE 3: Selective Attention (Micro-Flicks)
-           ========================================== */
+        /* STAGE 3: Selective Attention */
+        // Logic: Ball & Distractor teleport, teaching brain to filter out yellow
         function executeStage3() {
             updateHUD("SNAP focus to the RED ball. IGNORE the YELLOW ball!", "var(--brand-primary-hover)");
             
@@ -1239,7 +1470,7 @@
                     yellowY = getRandomArbitrary(bounds.minY, bounds.maxY);
                     attempts++;
                     
-                    if (Math.hypot(redX - yellowX, redY - yellowY) > 250) {
+                    if (Math.hypot(redX - yellowX, redY - yellowY) > (window.innerWidth < 600 ? 120 : 250)) {
                         distanceSafetyThreshold = true;
                     }
                 }
@@ -1249,20 +1480,25 @@
 
                 yellowBall.style.left = `${yellowX}px`;
                 yellowBall.style.top = `${yellowY}px`;
+
+                // Distinct soft plop for double target spawn
+                playTone(400, 'plop', 0.1);
             }
 
             processCognitiveSplitFlick();
             activeInterval = setInterval(processCognitiveSplitFlick, swapInterval); 
         }
 
-        /* ==========================================
-           End Session Routines
-           ========================================== */
+        /* End Session Routines */
         function completeRoutine() {
             redBall.style.display = 'none';
             yellowBall.style.display = 'none';
             cancelBtn.style.display = 'none';
             
+            playTone(523.25, 'sine', 0.15); // C5
+            setTimeout(() => playTone(659.25, 'sine', 0.15), 150); // E5
+            setTimeout(() => playTone(783.99, 'sine', 0.3), 300); // G5
+
             updateHUD("Training Complete! Excellent job.", "var(--brand-primary-hover)");
             
             setTimeout(() => {
@@ -1273,7 +1509,6 @@
                 }, 50);
                 const button = menu.querySelector('.start-btn');
                 button.innerText = "Train Again";
-                // Resume preview panel animation engine loops
                 animateSpeedPreview();
             }, 3500);
         }
@@ -1282,7 +1517,14 @@
             return Math.random() * (max - min) + min;
         }
 
-        // Initialize setup state on page mount and load any stored parameters
+        window.addEventListener('resize', () => {
+            if (crosshair.style.display === 'block') {
+                crosshair.style.left = `${window.innerWidth / 2 - 20}px`;
+                crosshair.style.top = `${window.innerHeight / 2 - 20}px`;
+            }
+        });
+
+        // Initialize setup state on page mount
         loadSettings();
         animateSpeedPreview();
     </script>
